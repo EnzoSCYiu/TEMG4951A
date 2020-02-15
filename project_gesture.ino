@@ -32,12 +32,8 @@ BLECharacteristic *pCharacteristic;
 
 //SD card variable
 File root;
-File myFile;
 int buzz_count = 0;
-String message;
-
-//time
-
+int gate = 0;
 
 void setup(){
   Wire.begin();
@@ -58,17 +54,7 @@ void setup(){
     Serial.println("SD card initialization failed");
     return;
   }
-  myFile = writeFile(SD, "/Gesture.txt", "Welcome to Gesture, here are the information of incorrect posture detected: \n");
-  if (myFile){
-    Serial.write("1");
-  }
-  else{
-    Serial.write("2");
-  }
-//  myFile = SD.open("/Gesture.txt", FILE_WRITE);  
-//  myFile.print("Welcome to Gesture, here are the information of incorrect posture detected: \n");
-//  myFile.close();
-
+  writeFile(SD, "/Gesture.txt", "Welcome to Gesture, here are the information of incorrect posture detected: \n");
 //  readFile(SD, "/Gesture.txt");
 //  deleteFile(SD, "/Gesture.txt");
 //  root = SD.open("/");
@@ -89,12 +75,10 @@ void setup(){
   pService->start();
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->start();
-
-
 }
 
 void loop(){  
-  //initialization
+  //MPU initialization
   Wire.beginTransmission(MPU_addr);
   Wire.write(0x3B);
   Wire.endTransmission(false);
@@ -111,7 +95,7 @@ void loop(){
   y= RAD_TO_DEG * (atan2(-xAng, -zAng)+PI);
   z= RAD_TO_DEG * (atan2(-yAng, -xAng)+PI);
 
-  //signal buzzer and vibrator if the angle tilts more than +-20 deg along xy direction
+  //Signal buzzer and vibrator if the angle tilts more than +-20 deg along xy direction
   if ((x<340)&&(x>20)||(y<340)&&(y>20)){
    digitalWrite(17,HIGH);
    digitalWrite(16,HIGH); 
@@ -121,6 +105,51 @@ void loop(){
    digitalWrite(16,LOW);
   }
      
+  //insert incorrect posture record, write into SD card
+  buzz = digitalRead(16);
+  if ((buzz==HIGH) && (gate=1)){
+    appendFile(SD, "/Gesture.txt", buzz_count + " " + "time \t angle\n");
+    buzz_count++;
+    gate = 0;  
+  }
+  else{
+    gate=1;
+  }
+
+     
+  //bluetooth connection LED --> replaced:using a wire as button
+  blue = digitalRead(36);
+//  if (blue == 0){
+//   digitalWrite(2,!blue); 
+//  }
+  if (blue == HIGH){
+    String message;
+    readFile(SD, "/Gesture.txt",message); 
+    int length = message.length();
+    char mes[length];
+    message.toCharArray(mes,length);
+    pCharacteristic->setValue(mes);
+    Serial.println("sent through blutooth:");
+    Serial.println(message);
+  }
+  else{
+    pCharacteristic->setValue("111");
+    Serial.println("111");
+  }
+
+
+
+//     Serial.print("AngleX= ");
+//     Serial.println(x);
+//
+//     Serial.print("AngleY= ");
+//     Serial.println(y);
+//
+//     Serial.print("AngleZ= ");
+//     Serial.println(z);
+//     Serial.println("-----------------------------------------");
+//     delay(1000);
+
   //signal low battery measure LED(not tested)  
   while (low_count < 10) {
    lowbat += analogRead(A13);
@@ -134,55 +163,16 @@ void loop(){
   if (voltage < 2.0){
     digitalWrite(5,HIGH);
   }
-     
-  //singal bluetooth transmition
-  buzz = digitalRead(16);
-//  pCharacteristic->setValue(buzz); 
-     
-  //bluetooth connection LED(not tested)
-  blue = digitalRead(36);
-//  if (blue == 0){
-//   digitalWrite(2,!blue); 
-//  }
-  readFile(SD, "/Gesture.txt",message);
-  Serial.println(message);
-//  message = myFile.read();
-//  while(myFile.available()){
-//    Serial.write(myFile.read());
-//  }
-//  message = message + String(myFile.read());
-//  delay(1000);
-//  if (blue == HIGH){
-//    pCharacteristic->setValue(message);
-//    Serial.println("sent through blutooth:");
-//    Serial.println(message);
-//  }
-
-   //write into SD card
-//  if (buzz==HIGH){
-//    appendFile(SD, "/Gesture.txt", buzz_count + "time \t angle\n");  
-//  }
-
-//     Serial.print("AngleX= ");
-//     Serial.println(x);
-//
-//     Serial.print("AngleY= ");
-//     Serial.println(y);
-//
-//     Serial.print("AngleZ= ");
-//     Serial.println(z);
-//     Serial.println("-----------------------------------------");
-//     delay(1000);
 }
 
 
-File writeFile(fs::FS &fs, const char * path, const char * message){
+void writeFile(fs::FS &fs, const char * path, const char * message){
     Serial.printf("Writing file: %s\n", path);
 
     File file = fs.open(path, FILE_WRITE);
     if(!file){
         Serial.println("Failed to open file for writing");
-        return file;
+        return;
     }
     if(file.print(message)){
         Serial.println("File written");
@@ -190,7 +180,6 @@ File writeFile(fs::FS &fs, const char * path, const char * message){
         Serial.println("Write failed");
     }
     file.close();
-    return file;
 }
 
 void deleteFile(fs::FS &fs, const char * path){
@@ -231,16 +220,17 @@ void readFile(fs::FS &fs, const char * path, String& message){
 
     File file = fs.open(path);
     if(!file){
-        //Serial.println("Failed to open file for reading");
+        Serial.println("Failed to open file for reading");
         return;
     }
 
     Serial.print("Read from file: ");
     while(file.available()){
       char temp = file.read();
-        message += temp;
-//          Serial.write(file.read());
+      message += temp;
+          //Serial.write(file.read());
     }
+//    Serial.println(message);
     file.close();
 }
 
