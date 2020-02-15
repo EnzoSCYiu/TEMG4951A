@@ -33,7 +33,8 @@ BLECharacteristic *pCharacteristic;
 //SD card variable
 File root;
 int buzz_count = 0;
-int gate = 0;
+int gate1 = 0;
+int gate2 = 0;
 
 void setup(){
   Wire.begin();
@@ -107,13 +108,13 @@ void loop(){
      
   //insert incorrect posture record, write into SD card
   buzz = digitalRead(16);
-  if ((buzz==HIGH) && (gate=1)){
-    appendFile(SD, "/Gesture.txt", buzz_count + " " + "time \t angle\n");
+  if ((buzz==HIGH) && (gate1==1)){
+    appendFile(SD, "/Gesture.txt", buzz_count + "\t time \t angle\n");
     buzz_count++;
-    gate = 0;  
+    gate1 = 0;  
   }
-  else{
-    gate=1;
+  else if(buzz==LOW){
+    gate1 = 1;
   }
 
      
@@ -122,7 +123,7 @@ void loop(){
 //  if (blue == 0){
 //   digitalWrite(2,!blue); 
 //  }
-  if (blue == HIGH){
+  if ((blue == HIGH)&&(gate2 == 1)){
     String message;
     readFile(SD, "/Gesture.txt",message); 
     int length = message.length();
@@ -131,10 +132,12 @@ void loop(){
     pCharacteristic->setValue(mes);
     Serial.println("sent through blutooth:");
     Serial.println(message);
+    gate2 = 0;
   }
-  else{
+  else if((blue == LOW)){
     pCharacteristic->setValue("111");
     Serial.println("111");
+    gate2 = 1;
   }
 
 
