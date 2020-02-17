@@ -2,7 +2,6 @@
 #include<Wire.h>
 #include <BLEDevice.h>
 #include <BLEUtils.h>
-//#include <BLEServer.h>
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
@@ -35,6 +34,12 @@ File root;
 int buzz_count = 0;
 int gate1 = 0;
 int gate2 = 0;
+
+//hardcoding time
+
+
+
+
 
 void setup(){
   Wire.begin();
@@ -97,7 +102,10 @@ void loop(){
   z= RAD_TO_DEG * (atan2(-yAng, -xAng)+PI);
 
   //Signal buzzer and vibrator if the angle tilts more than +-20 deg along xy direction
-  if ((x<340)&&(x>20)||(y<340)&&(y>20)){
+  if ((x>120)&&(x<360)||(x<80)&&(x>0)){
+    //(x<105)&&(x>80)
+    //((y>340)||(y<20))||(x<105)&&(x>80)
+    //(x>110)&&(x<360)||(x<80)&&(x>0)||(y<340)&&(y>20)
    digitalWrite(17,HIGH);
    digitalWrite(16,HIGH); 
   }
@@ -109,7 +117,10 @@ void loop(){
   //insert incorrect posture record, write into SD card
   buzz = digitalRead(16);
   if ((buzz==HIGH) && (gate1==1)){
-    appendFile(SD, "/Gesture.txt", buzz_count + "\t time \t angle\n");
+    appendFile(SD, "/Gesture.txt", "16:00 \t ");
+    appendFile(SD, "/Gesture.txt", "X:70");
+    appendFile(SD, "/Gesture.txt", "\tY:65");
+    appendFile(SD, "/Gesture.txt", "\n");
     buzz_count++;
     gate1 = 0;  
   }
@@ -136,7 +147,7 @@ void loop(){
   }
   else if((blue == LOW)){
     pCharacteristic->setValue("111");
-    Serial.println("111");
+    //Serial.println("111");
     gate2 = 1;
   }
 
@@ -151,21 +162,21 @@ void loop(){
 //     Serial.print("AngleZ= ");
 //     Serial.println(z);
 //     Serial.println("-----------------------------------------");
-//     delay(1000);
+     //delay(1000);
 
   //signal low battery measure LED(not tested)  
-  while (low_count < 10) {
-   lowbat += analogRead(A13);
-   low_count++;
-   delay(10);
-  }
-  voltage = (lowbat / 10.0 * 5.0) / 1024.0;
-  voltage = voltage * 10.0 / 27.3;
-  low_count = 0;
-  lowbat = 0;
-  if (voltage < 2.0){
-    digitalWrite(5,HIGH);
-  }
+//  while (low_count < 10) {
+//   lowbat += analogRead(A13);
+//   low_count++;
+//   delay(10);
+//  }
+//  voltage = (lowbat / 10.0 * 5.0) / 1024.0;
+//  voltage = voltage * 10.0 / 27.3;
+//  low_count = 0;
+//  lowbat = 0;
+//  if (voltage < 2.0){
+//    digitalWrite(5,HIGH);
+//  }
 }
 
 
